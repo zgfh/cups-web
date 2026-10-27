@@ -7,9 +7,13 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
-    name: Build and push hanxi/cups-web
+    name: Build and push GHCR images
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
@@ -29,13 +33,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push hanxi/cups-web (multi-arch)
+      - name: Build and push cups-web (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: ./
@@ -49,12 +54,12 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
           tags: |
-            hanxi/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}${{ github.ref_type == 'tag' && '
-            hanxi/cups-web:latest' || '' }}
+            ghcr.io/${{ github.repository_owner }}/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}${{ github.ref_type == 'tag' && '
+            ghcr.io/${{ github.repository_owner }}/cups-web:latest' || '' }}
           cache-from: type=gha,scope=cups-web
           cache-to: type=gha,scope=cups-web,mode=max
 
-      - name: Build and push hanxi/cups-web (Web only, multi-arch)
+      - name: Build and push cups-web (Web only, multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: ./
@@ -65,8 +70,8 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
           tags: |
-            hanxi/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}-web${{ github.ref_type == 'tag' && '
-            hanxi/cups-web:latest-web' || '' }}
+            ghcr.io/${{ github.repository_owner }}/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}-web${{ github.ref_type == 'tag' && '
+            ghcr.io/${{ github.repository_owner }}/cups-web:latest-web' || '' }}
           cache-from: |
             type=gha,scope=cups-web
             type=gha,scope=cups-web-web
@@ -80,5 +85,5 @@ jobs:
     steps:
       - name: Output pushed image refs
         run: |
-          echo "Pushed hanxi/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}${{ github.ref_type == 'tag' && ' and hanxi/cups-web:latest' || '' }}"
-          echo "Pushed hanxi/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}-web${{ github.ref_type == 'tag' && ' and hanxi/cups-web:latest-web' || '' }}"
+          echo "Pushed ghcr.io/${{ github.repository_owner }}/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}${{ github.ref_type == 'tag' && ' and ghcr.io/${{ github.repository_owner }}/cups-web:latest' || '' }}"
+          echo "Pushed ghcr.io/${{ github.repository_owner }}/cups-web:${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}-web${{ github.ref_type == 'tag' && ' and ghcr.io/${{ github.repository_owner }}/cups-web:latest-web' || '' }}"
