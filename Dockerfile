@@ -311,6 +311,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       printer-driver-cups-pdf \
       printer-driver-escpr \
       printer-driver-foo2zjs \
+      # Canon MG2500 series uses the Gutenprint PPD/filter on Linux. \
+      printer-driver-gutenprint \
       printer-driver-splix \
       printer-driver-postscript-hp \
       printer-driver-hpijs \
