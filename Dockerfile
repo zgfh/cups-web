@@ -209,6 +209,7 @@ RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
       echo "$CANON_MG2500_DRIVER_MD5  /tmp/cnijfilter-mg2500.tar.gz" | md5sum -c - && \
       mkdir -p /tmp/cnijfilter-mg2500 && \
       tar -xzf /tmp/cnijfilter-mg2500.tar.gz -C /tmp/cnijfilter-mg2500 && \
+      mkdir -p /usr/share/cups/model && \
       dpkg -i "$(find /tmp/cnijfilter-mg2500 -name 'cnijfilter-common_4.00-1_amd64.deb' -print -quit)" \
               "$(find /tmp/cnijfilter-mg2500 -name 'cnijfilter-mg2500series_4.00-1_amd64.deb' -print -quit)"; \
     fi && \
