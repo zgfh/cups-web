@@ -195,6 +195,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && fc-cache -f \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Canon's official MG2500 IJ filter is required for reliable USB printing on
+# this series.  The vendor distributes an amd64 Debian package only; keep the
+# generic drivers for arm64 images used by the multi-architecture release.
+ARG CANON_MG2500_DRIVER_URL="http://gdlp01.c-wss.com/gds/2/0100005502/01/cnijfilter-mg2500series-4.00-1-deb.tar.gz"
+ARG CANON_MG2500_DRIVER_MD5="133593894b4dd9553b0891f92966e9de"
+RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+      curl -fsSL "$CANON_MG2500_DRIVER_URL" -o /tmp/cnijfilter-mg2500.tar.gz && \
+      echo "$CANON_MG2500_DRIVER_MD5  /tmp/cnijfilter-mg2500.tar.gz" | md5sum -c - && \
+      mkdir -p /tmp/cnijfilter-mg2500 && \
+      tar -xzf /tmp/cnijfilter-mg2500.tar.gz -C /tmp/cnijfilter-mg2500 && \
+      dpkg -i /tmp/cnijfilter-mg2500/packages/cnijfilter-common_4.00-1_amd64.deb \
+              /tmp/cnijfilter-mg2500/packages/cnijfilter-mg2500series_4.00-1_amd64.deb; \
+    fi && \
+    rm -rf /tmp/cnijfilter-mg2500 /tmp/cnijfilter-mg2500.tar.gz
+
 # ────────────────────────────────────────────────────────────────
 # HOME / LibreOffice user profile 目录
 # ────────────────────────────────────────────────────────────────
