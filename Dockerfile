@@ -171,6 +171,9 @@ ENV TZ=Asia/Shanghai
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       curl \
+      libpopt0 \
+      libusb-1.0-0 \
+      libxml2 \
       # ── LibreOffice headless（Office 文档转换） ──
       libreoffice-core \
       libreoffice-writer \
