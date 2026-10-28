@@ -27,18 +27,12 @@ jobs:
           - variant: runtime
             arch: arm64
             platform: linux/arm64
-          - variant: runtime
-            arch: armv7
-            platform: linux/arm/v7
           - variant: web-runtime
             arch: amd64
             platform: linux/amd64
           - variant: web-runtime
             arch: arm64
             platform: linux/arm64
-          - variant: web-runtime
-            arch: armv7
-            platform: linux/arm/v7
     steps:
       - name: Free disk space
         run: |
@@ -105,7 +99,7 @@ jobs:
               suffix="-web"
             fi
             sources=""
-            for arch in amd64 arm64 armv7; do
+            for arch in amd64 arm64; do
               sources="$sources $IMAGE_NAME:build-$GITHUB_SHA-$variant-$arch"
             done
             tags="-t $IMAGE_NAME:$VERSION$suffix"
