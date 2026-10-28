@@ -170,6 +170,7 @@ ENV TZ=Asia/Shanghai
 # 两种镜像共用文档转换和字体配置，避免 Office/OFD/PDF 能力分叉。
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
+      curl \
       # ── LibreOffice headless（Office 文档转换） ──
       libreoffice-core \
       libreoffice-writer \
@@ -395,7 +396,9 @@ RUN sed -i 's/Listen localhost:631/Listen 0.0.0.0:631/' /etc/cups/cupsd.conf && 
     sed -i 's/<Location \/admin\/log>/<Location \/admin\/log>\n  Allow All/' /etc/cups/cupsd.conf && \
     echo "ServerAlias *" >> /etc/cups/cupsd.conf && \
     echo "DefaultEncryption Never" >> /etc/cups/cupsd.conf && \
-    echo "ReadyPaperSizes A4,A3,A5,A6,EnvDL" >> /etc/cups/cupsd.conf
+    echo "ReadyPaperSizes A4,A3,A5,A6,EnvDL" >> /etc/cups/cupsd.conf && \
+    sed -i '/^TempDir /d' /etc/cups/cups-files.conf && \
+    echo 'TempDir /tmp' >> /etc/cups/cups-files.conf
 # 说明本段每一条的理由（前人踩过的坑，别再改回去）：
 #   - Listen 0.0.0.0:631 —— 容器外要能连。
 #   - `<Location />` / `/admin` / `/admin/conf` 加 Allow All —— 出厂是
