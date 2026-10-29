@@ -137,7 +137,7 @@ fi
 # port 6080 with the maintenance utility already open.  It shares this
 # container's CUPS queue and Canon driver; it does not alter the queue.
 if [ "${ENABLE_MAINTENANCE_UI:-0}" = "1" ]; then
-    if command -v Xvfb >/dev/null 2>&1 && command -v x11vnc >/dev/null 2>&1 && command -v novnc >/dev/null 2>&1 && command -v cngpijmnt >/dev/null 2>&1; then
+    if command -v Xvfb >/dev/null 2>&1 && command -v x11vnc >/dev/null 2>&1 && command -v websockify >/dev/null 2>&1 && command -v cngpijmnt >/dev/null 2>&1 && [ -d /usr/share/novnc ]; then
         : "${CUPSPASSWORD:?CUPSPASSWORD is required when maintenance UI is enabled}"
         export DISPLAY=:99
         mkdir -p /run/cups-maintenance
@@ -148,7 +148,7 @@ if [ "${ENABLE_MAINTENANCE_UI:-0}" = "1" ]; then
         openbox-session >/var/log/cups/maintenance-openbox.log 2>&1 &
         cngpijmnt Canon_MG2500 >/var/log/cups/maintenance-canon.log 2>&1 &
         x11vnc -display "$DISPLAY" -rfbauth /run/cups-maintenance/vnc.pass -forever -shared -localhost -rfbport 5900 >/var/log/cups/maintenance-vnc.log 2>&1 &
-        novnc --listen 6080 --vnc localhost:5900 >/var/log/cups/maintenance-novnc.log 2>&1 &
+        websockify --web /usr/share/novnc 6080 localhost:5900 >/var/log/cups/maintenance-novnc.log 2>&1 &
         echo "[entrypoint] Canon maintenance desktop enabled on noVNC port 6080"
     else
         echo "[entrypoint] WARN: Canon maintenance desktop requested but its dependencies are missing"
