@@ -130,6 +130,31 @@ fi
 # ══════════════════════════════════════════════════════════════
 # 6. Start dbus + avahi + ipp-usb (from cups/entrypoint.sh)
 # ══════════════════════════════════════════════════════════════
+# ── Optional Canon maintenance desktop ────────────────────────────────
+# Canon's cngpijmnt provides nozzle checks and cleaning but has no CLI for
+# those actions.  It requires X11, so normal headless deployments cannot use
+# it.  When explicitly enabled, expose a password-protected noVNC session on
+# port 6080 with the maintenance utility already open.  It shares this
+# container's CUPS queue and Canon driver; it does not alter the queue.
+if [ "${ENABLE_MAINTENANCE_UI:-0}" = "1" ]; then
+    if command -v Xvfb >/dev/null 2>&1 && command -v x11vnc >/dev/null 2>&1 && command -v novnc >/dev/null 2>&1 && command -v cngpijmnt >/dev/null 2>&1; then
+        : "${CUPSPASSWORD:?CUPSPASSWORD is required when maintenance UI is enabled}"
+        export DISPLAY=:99
+        mkdir -p /run/cups-maintenance
+        umask 077
+        x11vnc -storepasswd "$CUPSPASSWORD" /run/cups-maintenance/vnc.pass >/dev/null
+        Xvfb "$DISPLAY" -screen 0 1280x800x24 -nolisten tcp >/var/log/cups/maintenance-xvfb.log 2>&1 &
+        sleep 1
+        openbox-session >/var/log/cups/maintenance-openbox.log 2>&1 &
+        cngpijmnt Canon_MG2500 >/var/log/cups/maintenance-canon.log 2>&1 &
+        x11vnc -display "$DISPLAY" -rfbauth /run/cups-maintenance/vnc.pass -forever -shared -localhost -rfbport 5900 >/var/log/cups/maintenance-vnc.log 2>&1 &
+        novnc --listen 6080 --vnc localhost:5900 >/var/log/cups/maintenance-novnc.log 2>&1 &
+        echo "[entrypoint] Canon maintenance desktop enabled on noVNC port 6080"
+    else
+        echo "[entrypoint] WARN: Canon maintenance desktop requested but its dependencies are missing"
+    fi
+fi
+
 # ── 后台拉起 avahi-daemon 与 ipp-usb：用于 driverless / IPP Everywhere 发现 ──
 # 其中 ipp-usb 负责把 USB 直连的 IPP Everywhere 打印机（如 Brother DCP-T425W）
 # 暴露成本地 http://localhost 的 IPP 端点，让 CUPS 能把它识别为

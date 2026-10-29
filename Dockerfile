@@ -366,6 +366,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       # avahi-utils（issue #107）：提供 avahi-browse / avahi-resolve，
       # 排查"发现不了网络打印机 / AirPrint 搜不到"时在容器内直接验证 mDNS。
       avahi-utils \
+      # Canon maintenance utility (cngpijmnt) is GTK/X11-only.  Keep the
+      # minimal virtual desktop stack in the AIO image; it is started only
+      # when ENABLE_MAINTENANCE_UI=1, never during normal printing.
+      xvfb \
+      x11vnc \
+      openbox \
+      novnc \
       dbus \
       # libnss-mdns（issue #107）：让 glibc NSS 能解析 .local 域名。没有它时
       # 添加 dnssd://Brother%20xxx._ipp._tcp.local 这类网络打印机 URI 会因
