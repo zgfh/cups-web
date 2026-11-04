@@ -497,6 +497,27 @@ func reprintHandler(w http.ResponseWriter, r *http.Request) {
 	if pages < 1 {
 		pages = 1
 	}
+	// 重打也可能来自 PDF、Office、OFD 或纯文本。不能只在首次上传的
+	// handler 做 Canon 兼容处理，否则历史页的“重打”会绕过它并再次输出空白。
+	if os.Getenv("CANON_RASTERIZE_DOCUMENTS") == "true" && printMime == "application/pdf" && kind != fileKindImage {
+		previousCleanup := printCleanup
+		rasterPath, rasterCleanup, rasterErr := rasterizePDFForCanon(countCtx, printPath, req.Orientation, req.PaperSize)
+		if rasterErr != nil {
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+			writeJSONError(w, http.StatusBadRequest, "document rasterization failed")
+			return
+		}
+		printPath = rasterPath
+		printCleanup = func() {
+			rasterCleanup()
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+		}
+		log.Printf("[reprint] canon document raster fallback enabled pages=%d", pages)
+	}
 	if printCleanup != nil {
 		defer printCleanup()
 	}

@@ -197,6 +197,26 @@ func executeScheduled(s *store.Store, uploads string, task store.ScheduledPrint)
 	if pages < 1 {
 		pages = 1
 	}
+	// 定时任务必须和即时打印、历史重打使用一致的 Canon 文档兼容路径；
+	// 否则文本或 PDF 在定时触发时会重新走会丢失矢量内容的旧过滤链。
+	if os.Getenv("CANON_RASTERIZE_DOCUMENTS") == "true" && printMime == "application/pdf" && kind != fileKindImage {
+		previousCleanup := printCleanup
+		rasterPath, rasterCleanup, rasterErr := rasterizePDFForCanon(ctx, printPath, task.Orientation, task.PaperSize)
+		if rasterErr != nil {
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+			return "failed", fmt.Errorf("document rasterization failed: %w", rasterErr)
+		}
+		printPath = rasterPath
+		printCleanup = func() {
+			rasterCleanup()
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+		}
+		log.Printf("[scheduler] canon document raster fallback enabled pages=%d", pages)
+	}
 	if printCleanup != nil {
 		defer printCleanup()
 	}
