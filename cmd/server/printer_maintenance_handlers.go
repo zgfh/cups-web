@@ -15,6 +15,9 @@ import (
 const (
 	canonMaintenanceDefaultPrinter = "Canon_MG2500"
 	canonMaintenanceTimeout        = 30 * time.Second
+	// Increment when the fixed Canon maintenance command vocabulary changes.
+	// Returning it lets operators confirm which reviewed protocol revision is live.
+	canonMaintenanceProtocolRevision = "2026-11-04.1"
 )
 
 type printerMaintenanceRequest struct {
@@ -73,10 +76,11 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 
 	job := strings.TrimSpace(string(output))
 	writeJSON(w, map[string]string{
-		"ok":      "true",
-		"action":  action,
-		"printer": printer,
-		"job":     job,
+		"ok":               "true",
+		"action":           action,
+		"printer":          printer,
+		"job":              job,
+		"protocolRevision": canonMaintenanceProtocolRevision,
 	})
 }
 
