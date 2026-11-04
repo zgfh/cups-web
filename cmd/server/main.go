@@ -182,6 +182,7 @@ func main() {
 	admin.HandleFunc("/settings", adminGetSettingsHandler).Methods("GET")
 	admin.HandleFunc("/settings", adminUpdateSettingsHandler).Methods("PUT")
 	admin.HandleFunc("/cleanup", adminCleanupHandler).Methods("POST")
+	admin.HandleFunc("/printer-maintenance", printerMaintenanceHandler).Methods("POST")
 	admin.HandleFunc("/drivers", adminListDriversHandler).Methods("GET")
 	admin.HandleFunc("/drivers/install", adminInstallDriverHandler).Methods("POST")
 	admin.HandleFunc("/drivers/remove", adminRemoveDriverHandler).Methods("POST")

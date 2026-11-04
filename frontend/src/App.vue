@@ -64,6 +64,14 @@
                 icon="i-lucide-puzzle"
                 @click="router.push('/drivers')"
               > {{ t('ui.drivers') }} </UButton>
+              <UButton
+                v-if="isAdmin"
+                :variant="route.path === '/printer-maintenance' ? 'soft' : 'ghost'"
+                :color="route.path === '/printer-maintenance' ? 'primary' : 'neutral'"
+                size="xs"
+                icon="i-lucide-wrench"
+                @click="router.push('/printer-maintenance')"
+              > {{ t('ui.printer_maintenance') }} </UButton>
             </div>
             <UButton
               v-if="session"
@@ -185,6 +193,7 @@ const menuItems = computed(() => {
   if (isAdmin.value) {
     nav.push({ label: t('ui.administration'), icon: 'i-lucide-settings', onSelect: () => router.push('/admin') })
     nav.push({ label: t('ui.drivers'), icon: 'i-lucide-puzzle', onSelect: () => router.push('/drivers') })
+    nav.push({ label: t('ui.printer_maintenance'), icon: 'i-lucide-wrench', onSelect: () => router.push('/printer-maintenance') })
   }
   const account = [{ label: t('ui.sign_out'), icon: 'i-lucide-log-out', onSelect: () => logout() }]
   return nav.length ? [nav, account] : [account]

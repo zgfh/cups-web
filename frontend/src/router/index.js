@@ -15,6 +15,12 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/printer-maintenance',
+    name: 'printer-maintenance',
+    component: () => import('../views/PrinterMaintenanceView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
     path: '/scheduled',
     name: 'scheduled',
     component: () => import('../views/ScheduledView.vue'),
