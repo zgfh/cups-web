@@ -9,6 +9,16 @@
       <div class="space-y-4">
         <p class="text-sm text-muted">{{ t('ui.printer_maintenance_description') }}</p>
         <UAlert color="warning" variant="subtle" icon="i-lucide-triangle-alert" :title="t('ui.printer_maintenance_warning')" />
+        <div class="rounded-lg border border-default bg-elevated/30 p-4 text-sm space-y-2">
+          <h3 class="font-semibold">{{ t('ui.maintenance_before_you_start') }}</h3>
+          <ul class="list-disc pl-5 space-y-1 text-muted">
+            <li>{{ t('ui.maintenance_check_ink_and_cartridges') }}</li>
+            <li>{{ t('ui.maintenance_nozzle_workflow') }}</li>
+            <li>{{ t('ui.maintenance_roller_preparation') }}</li>
+            <li>{{ t('ui.maintenance_bottom_plate_preparation') }}</li>
+            <li>{{ t('ui.maintenance_alignment_note') }}</li>
+          </ul>
+        </div>
         <div class="flex flex-wrap gap-2">
           <UButton icon="i-lucide-printer-check" :loading="running === 'nozzle-check'" :disabled="!!running" @click="run('nozzle-check')">
             {{ t('ui.nozzle_check') }}
