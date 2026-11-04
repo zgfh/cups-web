@@ -24,9 +24,8 @@ type printerMaintenanceRequest struct {
 // printerMaintenanceHandler sends a small, fixed Canon BJL maintenance job
 // through the local CUPS queue.  Do not turn this into a generic raw-print
 // endpoint: raw data can change device state and bypass all driver safeguards.
-// Only nozzle checks and ordinary cleaning are exposed; deep cleaning remains
-// a deliberate physical-support action because it consumes substantially more
-// ink.
+// Commands are restricted to the Canon MG2500 maintenance vocabulary.  Each
+// one is a fixed byte sequence selected below, never client-supplied raw data.
 func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 	var req printerMaintenanceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -41,6 +40,12 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 		title = "Canon nozzle check"
 	case "clean":
 		title = "Canon head cleaning"
+	case "deep-clean":
+		title = "Canon deep head cleaning"
+	case "roller-clean":
+		title = "Canon paper feed roller cleaning"
+	case "bottom-plate-clean":
+		title = "Canon bottom plate cleaning"
 	default:
 		writeJSONError(w, http.StatusBadRequest, "unsupported maintenance action")
 		return
@@ -76,10 +81,14 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func canonMaintenancePayload(action string, now time.Time) []byte {
-	command := "@TestPrint=NozzleCheck"
-	if action == "clean" {
-		command = "@Cleaning=1ALL"
+	commands := map[string]string{
+		"nozzle-check":       "@TestPrint=NozzleCheck",
+		"clean":              "@Cleaning=1ALL",
+		"deep-clean":         "@Cleaning=2ALL",
+		"roller-clean":       "@RollerCleaning=Roller",
+		"bottom-plate-clean": "@RollerCleaning=Platen",
 	}
+	command := commands[action]
 	const xml = `<?xml version="1.0" encoding="utf-8" ?>`
 	const ivec = `xmlns:ivec="http://www.canon.com/ns/cmd/2008/07/common/"`
 	const vcn = `xmlns:vcn="http://www.canon.com/ns/cmd/2008/07/canon/"`
