@@ -167,8 +167,14 @@ FROM debian:trixie-slim AS document-runtime
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Shanghai
 
+# Keep the document-runtime filesystem revision explicit.  Besides making the
+# packaged conversion stack traceable, this lets a release deliberately refresh
+# the otherwise shared OCI layer when a registry has served a corrupt blob.
+ARG DOCUMENT_RUNTIME_REVISION="2026-11-04.2"
+
 # 两种镜像共用文档转换和字体配置，避免 Office/OFD/PDF 能力分叉。
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN printf '%s\n' "$DOCUMENT_RUNTIME_REVISION" > /usr/local/share/cups-web-document-runtime-revision \
+    && apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       curl \
       libpopt0 \
