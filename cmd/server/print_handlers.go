@@ -302,6 +302,29 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 	if pages < 1 {
 		pages = 1
 	}
+	// The MG2500's legacy pstocanonij filter can silently drop every vector/text
+	// operation while still rendering photographs.  Enable a page-image PDF
+	// fallback only where the deployment explicitly opts in, preserving the
+	// normal vector workflow for printers that do not need it.
+	if os.Getenv("CANON_RASTERIZE_DOCUMENTS") == "true" && printMime == "application/pdf" && kind != fileKindImage {
+		previousCleanup := printCleanup
+		rasterPath, rasterCleanup, rasterErr := rasterizePDFForCanon(countCtx, printPath, orientation, paperSize)
+		if rasterErr != nil {
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+			writeJSONError(w, http.StatusBadRequest, "document rasterization failed")
+			return
+		}
+		printPath = rasterPath
+		printCleanup = func() {
+			rasterCleanup()
+			if previousCleanup != nil {
+				previousCleanup()
+			}
+		}
+		log.Printf("[print] canon document raster fallback enabled pages=%d", pages)
+	}
 	if printCleanup != nil {
 		defer printCleanup()
 	}

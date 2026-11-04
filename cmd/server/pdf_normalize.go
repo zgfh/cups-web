@@ -88,6 +88,49 @@ func normalizePDF(ctx context.Context, inputPath string) (*normalizePDFResult, e
 	return res, nil
 }
 
+// rasterizePDFForCanon bakes every PDF page into a PNG-backed PDF before it is
+// submitted to Canon's legacy PostScript filter.  Some Canon IJ filters accept
+// photographs but silently discard vector/text drawing operations; using the
+// same image-backed PDF path preserves the visible page content.
+func rasterizePDFForCanon(ctx context.Context, inputPath, orientation, paperSize string) (string, func(), error) {
+	gsBin, err := exec.LookPath("gs")
+	if err != nil {
+		return "", nil, fmt.Errorf("ghostscript %w", errBinaryNotInstalled)
+	}
+	tmpDir, err := os.MkdirTemp("", "canon-raster-")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanupImages := func() { _ = os.RemoveAll(tmpDir) }
+	outputPattern := filepath.Join(tmpDir, "page-%04d.png")
+	args := append([]string{}, cidfmapPreambleArgs()...)
+	args = append(args,
+		"-dNOPAUSE", "-dBATCH", "-dQUIET", "-dSAFER",
+		"-sDEVICE=png16m", "-r300", "-dTextAlphaBits=4", "-dGraphicsAlphaBits=4",
+		"-sOutputFile="+outputPattern, inputPath,
+	)
+	cmd := exec.CommandContext(ctx, gsBin, args...)
+	cmd.Env = append(os.Environ(), "LANG=C.UTF-8", "LC_ALL=C.UTF-8")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		cleanupImages()
+		return "", nil, fmt.Errorf("gs rasterize failed: %w - %s", err, firstErrorLine(string(out)))
+	}
+	pages, err := filepath.Glob(filepath.Join(tmpDir, "page-*.png"))
+	if err != nil || len(pages) == 0 {
+		cleanupImages()
+		return "", nil, fmt.Errorf("gs rasterize produced no pages: %w", err)
+	}
+	path, cleanupPDF, err := convertImagePathsToPDF(pages, orientation, paperSize, nil, false, 1, false)
+	if err != nil {
+		cleanupImages()
+		return "", nil, fmt.Errorf("wrap raster pages: %w", err)
+	}
+	return path, func() {
+		cleanupPDF()
+		cleanupImages()
+	}, nil
+}
+
 // summarizeToolError 把外部工具的原始 error 转成短消息存进 Warnings：
 //   - errBinaryNotInstalled → "ghostscript: not installed"
 //   - 其它失败              → "ghostscript: <原始 error 首行>"
