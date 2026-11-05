@@ -20,6 +20,9 @@
           </ul>
         </div>
         <div class="flex flex-wrap gap-2">
+          <UButton color="primary" icon="i-lucide-printer" :loading="running === 'test-page'" :disabled="!!running" @click="openConfirm('test-page')">
+            {{ t('ui.print_test_page') }}
+          </UButton>
           <UButton icon="i-lucide-printer-check" :loading="running === 'nozzle-check'" :disabled="!!running" @click="run('nozzle-check')">
             {{ t('ui.nozzle_check') }}
           </UButton>
@@ -68,6 +71,7 @@ const confirmOpen = ref(false)
 const pendingAction = ref('')
 
 const confirmationKeys = {
+  'test-page': ['ui.confirm_print_test_page', 'ui.print_test_page_confirmation', 'ui.print_test_page'],
   clean: ['ui.confirm_normal_cleaning', 'ui.normal_cleaning_confirmation', 'ui.normal_cleaning'],
   'deep-clean': ['ui.confirm_deep_cleaning', 'ui.deep_cleaning_confirmation', 'ui.deep_cleaning'],
   'roller-clean': ['ui.confirm_roller_cleaning', 'ui.roller_cleaning_confirmation', 'ui.roller_cleaning'],

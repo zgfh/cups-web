@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/phpdave11/gofpdf"
 )
 
 const (
@@ -39,6 +42,8 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 	action := strings.TrimSpace(req.Action)
 	var title string
 	switch action {
+	case "test-page":
+		title = "Canon print test page"
 	case "nozzle-check":
 		title = "Canon nozzle check"
 	case "clean":
@@ -58,12 +63,37 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 	if printer == "" {
 		printer = canonMaintenanceDefaultPrinter
 	}
-	payload := canonMaintenancePayload(action, time.Now())
-
 	ctx, cancel := context.WithTimeout(r.Context(), canonMaintenanceTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "lp", "-d", printer, "-o", "raw", "-t", title, "-")
-	cmd.Stdin = bytes.NewReader(payload)
+	var cmd *exec.Cmd
+	var cleanup func()
+	if action == "test-page" {
+		path, pageCleanup, err := generateMaintenanceTestPage()
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "failed to generate test page")
+			return
+		}
+		cleanup = pageCleanup
+		if os.Getenv("CANON_RASTERIZE_DOCUMENTS") == "true" {
+			rasterPath, rasterCleanup, err := rasterizePDFForCanon(ctx, path, "portrait", "A4")
+			if err != nil {
+				cleanup()
+				writeJSONError(w, http.StatusBadGateway, "failed to rasterize test page")
+				return
+			}
+			previousCleanup := cleanup
+			cleanup = func() { rasterCleanup(); previousCleanup() }
+			path = rasterPath
+		}
+		defer cleanup()
+		// Deliberately do not use -o raw: this is an ordinary CUPS print job so
+		// the selected Canon driver, paper handling and color pipeline are tested.
+		cmd = exec.CommandContext(ctx, "lp", "-d", printer, "-t", title, "-o", "media=A4", path)
+	} else {
+		payload := canonMaintenancePayload(action, time.Now())
+		cmd = exec.CommandContext(ctx, "lp", "-d", printer, "-o", "raw", "-t", title, "-")
+		cmd.Stdin = bytes.NewReader(payload)
+	}
 	output, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
 		writeJSONError(w, http.StatusGatewayTimeout, "maintenance job submission timed out")
@@ -82,6 +112,68 @@ func printerMaintenanceHandler(w http.ResponseWriter, r *http.Request) {
 		"job":              job,
 		"protocolRevision": canonMaintenanceProtocolRevision,
 	})
+}
+
+// generateMaintenanceTestPage creates one A4 page exercising text, solid
+// black, grayscale, CMYK-like color patches, and thin rules. It is intentionally
+// generated locally so the maintenance endpoint never fetches user-controlled
+// content or exposes a generic raw-print primitive.
+func generateMaintenanceTestPage() (string, func(), error) {
+	dir, err := os.MkdirTemp("", "printer-test-page-")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	path := filepath.Join(dir, "printer-test-page.pdf")
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetTitle("Printer Test Page", false)
+	pdf.AddPage()
+	pdf.SetFont("Helvetica", "B", 18)
+	pdf.CellFormat(0, 10, "Printer Test Page", "", 1, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 9)
+	pdf.MultiCell(0, 5, "Verify sharp text, smooth grayscale, solid black, cyan, magenta, yellow and the fine lines below. Generated locally by printer maintenance.", "", "L", false)
+	pdf.Ln(4)
+
+	patches := []struct {
+		r, g, b int
+		label   string
+	}{
+		{0, 0, 0, "Black"}, {0, 174, 239, "Cyan"}, {236, 0, 140, "Magenta"}, {255, 242, 0, "Yellow"},
+	}
+	for _, p := range patches {
+		pdf.SetFillColor(p.r, p.g, p.b)
+		pdf.Rect(pdf.GetX(), pdf.GetY(), 42, 22, "F")
+		pdf.SetTextColor(255, 255, 255)
+		pdf.SetFont("Helvetica", "B", 9)
+		pdf.CellFormat(42, 22, p.label, "", 0, "C", false, 0, "")
+	}
+	pdf.Ln(28)
+	for i := 0; i < 11; i++ {
+		v := 255 - i*25
+		pdf.SetFillColor(v, v, v)
+		pdf.Rect(10+float64(i)*17, pdf.GetY(), 17, 16, "F")
+	}
+	pdf.Ln(23)
+	pdf.SetTextColor(0, 0, 0)
+	pdf.SetFont("Helvetica", "", 8)
+	pdf.Cell(0, 5, "Grayscale: 100% black to 0% black")
+	pdf.Ln(10)
+	for i := 0; i < 12; i++ {
+		pdf.SetLineWidth(0.1 + float64(i)*0.05)
+		pdf.Line(15, pdf.GetY()+float64(i)*4, 195, pdf.GetY()+float64(i)*4)
+	}
+	pdf.SetY(pdf.GetY() + 55)
+	pdf.SetLineWidth(0.2)
+	pdf.SetFont("Helvetica", "", 7)
+	pdf.MultiCell(0, 4, "ABCDEFGHIJKLMNOPQRSTUVWXYZ  abcdefghijklmnopqrstuvwxyz  0123456789\nThe quick brown fox jumps over the lazy dog.", "", "L", false)
+	pdf.SetY(282)
+	pdf.SetTextColor(90, 90, 90)
+	pdf.Cell(0, 5, "A4 · one page · maintenance test only")
+	if err := pdf.OutputFileAndClose(path); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return path, cleanup, nil
 }
 
 func canonMaintenancePayload(action string, now time.Time) []byte {
